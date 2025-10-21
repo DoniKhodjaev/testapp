@@ -246,13 +246,8 @@ export class PaymentsService {
       },
     });
 
-    // Simulate bank processing (in real system, this is async via queue)
-    setTimeout(async () => {
-      await this.prisma.payment.update({
-        where: { id },
-        data: { status: PaymentStatus.BANK_ACCEPTED },
-      });
-    }, 2000);
+    // Bank Emulator service will automatically process this payment
+    // (in real system, this would be async via message queue to bank gateway)
 
     return updated;
   }

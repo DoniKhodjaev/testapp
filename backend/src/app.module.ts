@@ -12,6 +12,7 @@ import { CounterpartiesModule } from './modules/counterparties/counterparties.mo
 import { MessagesModule } from './modules/messages/messages.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { StorageModule } from './modules/storage/storage.module';
+import { BankEmulatorModule } from './modules/bank-emulator/bank-emulator.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { StorageModule } from './modules/storage/storage.module';
     MessagesModule,
     AuditModule,
     StorageModule,
+    BankEmulatorModule,
   ],
   controllers: [AppController],
   providers: [AppService],
