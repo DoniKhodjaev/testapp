@@ -13,6 +13,7 @@ export default function PaymentDetailPage() {
 
   const [payment, setPayment] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
+  const [files, setFiles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('details');
 
@@ -20,9 +21,15 @@ export default function PaymentDetailPage() {
   const [showSignModal, setShowSignModal] = useState(false);
   const [signing, setSigning] = useState(false);
 
+  // File upload
+  const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [docType, setDocType] = useState('CONTRACT');
+
   useEffect(() => {
     loadPayment();
     loadHistory();
+    loadFiles();
   }, [params.id]);
 
   const loadPayment = async () => {
@@ -44,6 +51,54 @@ export default function PaymentDetailPage() {
       setHistory(data);
     } catch (error) {
       console.error('Failed to load history:', error);
+    }
+  };
+
+  const loadFiles = async () => {
+    try {
+      const { data } = await paymentsApi.getFiles(params.id as string);
+      setFiles(data);
+    } catch (error) {
+      console.error('Failed to load files:', error);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
+
+  const handleFileUpload = async () => {
+    if (!selectedFile) return;
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('docType', docType);
+
+      await paymentsApi.uploadFile(params.id as string, formData);
+      setSelectedFile(null);
+      setDocType('CONTRACT');
+      await loadFiles();
+      alert('Файл успешно загружен!');
+    } catch (error: any) {
+      alert('Ошибка загрузки: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleFileDelete = async (fileId: string) => {
+    if (!confirm('Удалить файл?')) return;
+
+    try {
+      await paymentsApi.deleteFile(params.id as string, fileId);
+      await loadFiles();
+      alert('Файл удален');
+    } catch (error: any) {
+      alert('Ошибка удаления: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -350,9 +405,105 @@ export default function PaymentDetailPage() {
       )}
 
       {activeTab === 'files' && (
-        <div className="card">
-          <h3 className="font-semibold mb-4">Файлы ВК</h3>
-          <p className="text-gray-500 text-center py-8">Нет файлов</p>
+        <div className="space-y-6">
+          {/* Upload section */}
+          {user?.permissions?.includes('vkdocs:upload') &&
+            ['DRAFT', 'ON_APPROVAL'].includes(payment.status) && (
+              <div className="card">
+                <h3 className="font-semibold mb-4">Загрузить файл ВК</h3>
+                <div className="space-y-4">
+                  <div>
+                    <label className="label">Тип документа</label>
+                    <select
+                      className="input"
+                      value={docType}
+                      onChange={(e) => setDocType(e.target.value)}
+                    >
+                      <option value="CONTRACT">Контракт</option>
+                      <option value="INVOICE">Инвойс</option>
+                      <option value="SUPPORTING">Подтверждающие документы</option>
+                      <option value="OTHER">Прочее</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="label">Файл</label>
+                    <input
+                      type="file"
+                      onChange={handleFileSelect}
+                      className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                    />
+                    {selectedFile && (
+                      <p className="text-sm text-gray-600 mt-2">
+                        Выбран: {selectedFile.name} ({(selectedFile.size / 1024).toFixed(2)} KB)
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleFileUpload}
+                    disabled={!selectedFile || uploading}
+                    className="btn btn-primary"
+                  >
+                    {uploading ? 'Загрузка...' : 'Загрузить'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+          {/* Files list */}
+          <div className="card">
+            <h3 className="font-semibold mb-4">Загруженные файлы</h3>
+            {files.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">Нет файлов</p>
+            ) : (
+              <div className="space-y-3">
+                {files.map((file: any) => (
+                  <div
+                    key={file.id}
+                    className="flex items-center justify-between p-4 border rounded hover:bg-gray-50"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-100 rounded flex items-center justify-center">
+                          <span className="text-xl">📄</span>
+                        </div>
+                        <div>
+                          <p className="font-medium">{file.fileName}</p>
+                          <p className="text-sm text-gray-600">
+                            {file.docType} • {(file.fileSize / 1024).toFixed(2)} KB •{' '}
+                            {formatDateTime(file.uploadedAt)} • {file.uploader?.email}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`px-2 py-1 rounded text-xs font-medium ${
+                          file.status === 'APPROVED'
+                            ? 'bg-green-100 text-green-700'
+                            : file.status === 'NEEDS_CORRECTION'
+                            ? 'bg-orange-100 text-orange-700'
+                            : file.status === 'UNDER_REVIEW'
+                            ? 'bg-yellow-100 text-yellow-700'
+                            : 'bg-gray-100 text-gray-700'
+                        }`}
+                      >
+                        {file.status}
+                      </span>
+                      {user?.permissions?.includes('vkdocs:upload') &&
+                        ['DRAFT', 'ON_APPROVAL'].includes(payment.status) && (
+                          <button
+                            onClick={() => handleFileDelete(file.id)}
+                            className="text-red-600 hover:text-red-800 text-sm"
+                          >
+                            Удалить
+                          </button>
+                        )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 

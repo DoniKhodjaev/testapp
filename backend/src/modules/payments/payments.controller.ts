@@ -115,4 +115,36 @@ export class PaymentsController {
 
     return this.importService.importFromFile(file, user.companyId, user.id);
   }
+
+  @Get(':id/files')
+  @RequirePermissions('payments:view')
+  @ApiOperation({ summary: 'Get payment files' })
+  getFiles(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.paymentsService.getFiles(id, user.companyId);
+  }
+
+  @Post(':id/files')
+  @RequirePermissions('vkdocs:upload')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload file to payment' })
+  async uploadFile(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body('docType') docType: string,
+    @CurrentUser() user: any,
+  ) {
+    if (!file) {
+      throw new Error('File is required');
+    }
+
+    return this.paymentsService.uploadFile(id, file, docType, user.id, user.companyId);
+  }
+
+  @Delete(':id/files/:fileId')
+  @RequirePermissions('vkdocs:upload')
+  @ApiOperation({ summary: 'Delete payment file' })
+  deleteFile(@Param('fileId') fileId: string, @CurrentUser() user: any) {
+    return this.paymentsService.deleteFile(fileId, user.companyId);
+  }
 }

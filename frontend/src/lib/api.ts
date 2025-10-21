@@ -26,6 +26,12 @@ export const paymentsApi = {
   send: (id: string) => apiClient.post(`/payments/${id}/send`),
   delete: (id: string) => apiClient.delete(`/payments/${id}`),
   getHistory: (id: string) => apiClient.get(`/payments/${id}/history`),
+  getFiles: (id: string) => apiClient.get(`/payments/${id}/files`),
+  uploadFile: (id: string, formData: FormData) =>
+    apiClient.post(`/payments/${id}/files`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  deleteFile: (id: string, fileId: string) => apiClient.delete(`/payments/${id}/files/${fileId}`),
 };
 
 export const accountsApi = {

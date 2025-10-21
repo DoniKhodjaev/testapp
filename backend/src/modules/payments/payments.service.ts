@@ -273,4 +273,70 @@ export class PaymentsService {
       orderBy: { createdAt: 'asc' },
     });
   }
+
+  async uploadFile(
+    paymentId: string,
+    file: Express.Multer.File,
+    docType: string,
+    userId: string,
+    companyId: string,
+  ) {
+    const payment = await this.findOne(paymentId, companyId);
+
+    // Mock file URL (in production, upload to S3/MinIO)
+    const fileUrl = `https://storage.example.com/payments/${paymentId}/${file.originalname}`;
+
+    // Calculate SHA256 hash (simplified for mock)
+    const sha256 = Buffer.from(file.originalname).toString('base64').substring(0, 64);
+
+    const paymentFile = await this.prisma.paymentFile.create({
+      data: {
+        paymentId,
+        fileName: file.originalname,
+        fileSize: file.size,
+        mimeType: file.mimetype,
+        fileUrl,
+        sha256,
+        docType: docType as any,
+        uploadedBy: userId,
+      },
+      include: {
+        uploader: { select: { id: true, email: true } },
+      },
+    });
+
+    return paymentFile;
+  }
+
+  async getFiles(paymentId: string, companyId: string) {
+    const payment = await this.findOne(paymentId, companyId);
+
+    return this.prisma.paymentFile.findMany({
+      where: { paymentId },
+      include: {
+        uploader: { select: { id: true, email: true } },
+      },
+      orderBy: { uploadedAt: 'desc' },
+    });
+  }
+
+  async deleteFile(fileId: string, companyId: string) {
+    const file = await this.prisma.paymentFile.findUnique({
+      where: { id: fileId },
+      include: { payment: true },
+    });
+
+    if (!file || file.payment.companyId !== companyId) {
+      throw new NotFoundException('File not found');
+    }
+
+    // Can only delete files from DRAFT or ON_APPROVAL payments
+    if (!['DRAFT', 'ON_APPROVAL'].includes(file.payment.status)) {
+      throw new BadRequestException('Cannot delete files from submitted payments');
+    }
+
+    await this.prisma.paymentFile.delete({ where: { id: fileId } });
+
+    return { success: true };
+  }
 }
