@@ -13,6 +13,7 @@ import { MessagesModule } from './modules/messages/messages.module';
 import { AuditModule } from './modules/audit/audit.module';
 import { StorageModule } from './modules/storage/storage.module';
 import { BankEmulatorModule } from './modules/bank-emulator/bank-emulator.module';
+import { StatementsModule } from './modules/statements/statements.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { BankEmulatorModule } from './modules/bank-emulator/bank-emulator.module
     AuditModule,
     StorageModule,
     BankEmulatorModule,
+    StatementsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

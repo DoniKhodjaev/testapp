@@ -61,3 +61,11 @@ export const counterpartiesApi = {
 export const auditApi = {
   getAll: (params?: any) => apiClient.get('/audit', { params }),
 };
+
+export const statementsApi = {
+  getAll: (params?: any) => apiClient.get('/statements', { params }),
+  getOne: (id: string) => apiClient.get(`/statements/${id}`),
+  generate: (data: any) => apiClient.post('/statements/generate', data),
+  exportPDF: (id: string) => apiClient.get(`/statements/${id}/export/pdf`, { responseType: 'blob' }),
+  exportXLSX: (id: string) => apiClient.get(`/statements/${id}/export/xlsx`, { responseType: 'blob' }),
+};

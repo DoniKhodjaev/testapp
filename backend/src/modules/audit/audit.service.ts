@@ -20,11 +20,21 @@ export class AuditService {
     if (filters.userId) {
       where.userId = filters.userId;
     }
+    if (filters.objectType) {
+      where.objectType = filters.objectType;
+    }
+    if (filters.result) {
+      where.result = filters.result;
+    }
+
+    const limit = parseInt(filters.take) || 100;
+    const skip = parseInt(filters.skip) || 0;
 
     return this.prisma.auditLog.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      take: 100,
+      take: limit,
+      skip,
     });
   }
 }
