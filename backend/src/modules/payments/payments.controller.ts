@@ -8,9 +8,13 @@ import {
   Param,
   Query,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
+import { PaymentsImportService } from './payments-import.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../common/guards/permissions.guard';
 import { RequirePermissions } from '../../common/decorators/permissions.decorator';
@@ -24,7 +28,10 @@ import { SignPaymentDto } from './dto/sign-payment.dto';
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @ApiBearerAuth()
 export class PaymentsController {
-  constructor(private paymentsService: PaymentsService) {}
+  constructor(
+    private paymentsService: PaymentsService,
+    private importService: PaymentsImportService,
+  ) {}
 
   @Post()
   @RequirePermissions('payments:create')
@@ -91,5 +98,21 @@ export class PaymentsController {
   @ApiOperation({ summary: 'Get payment history' })
   getHistory(@Param('id') id: string, @CurrentUser() user: any) {
     return this.paymentsService.getHistory(id, user.companyId);
+  }
+
+  @Post('import')
+  @RequirePermissions('payments:import')
+  @UseInterceptors(FileInterceptor('file'))
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Import payments from CSV/XLSX' })
+  async importPayments(
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: any,
+  ) {
+    if (!file) {
+      throw new Error('File is required');
+    }
+
+    return this.importService.importFromFile(file, user.companyId, user.id);
   }
 }
